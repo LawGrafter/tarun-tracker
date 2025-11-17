@@ -23,28 +23,51 @@ export default function LoginPage() {
       const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
       if (SpeechRecognition) {
         const recognitionInstance = new SpeechRecognition()
-        recognitionInstance.continuous = true
-        recognitionInstance.interimResults = true
+        
+        // Mobile-optimized settings
+        const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
+        
+        if (isMobile) {
+          // Mobile: shorter bursts, process faster
+          recognitionInstance.continuous = false
+          recognitionInstance.interimResults = false
+        } else {
+          // Desktop: continuous listening
+          recognitionInstance.continuous = true
+          recognitionInstance.interimResults = true
+        }
+        
         recognitionInstance.lang = 'en-US'
-        recognitionInstance.maxAlternatives = 3
+        recognitionInstance.maxAlternatives = 5
 
         recognitionInstance.onresult = (event: any) => {
-          // Get the latest result
-          const lastResultIndex = event.results.length - 1
-          const speechResult = event.results[lastResultIndex][0].transcript.toLowerCase().trim()
+          // Get all results and combine them
+          let fullTranscript = ''
+          for (let i = 0; i < event.results.length; i++) {
+            fullTranscript += event.results[i][0].transcript
+          }
           
-          // Only process if it's a final result
-          if (event.results[lastResultIndex].isFinal) {
+          const speechResult = fullTranscript.toLowerCase().trim()
+          const lastResultIndex = event.results.length - 1
+          const isFinal = event.results[lastResultIndex].isFinal
+          
+          // Mobile or final result - process immediately
+          if (isFinal) {
             setTranscript(speechResult)
             
             // Stop recognition to process result
-            recognitionInstance.stop()
+            try {
+              recognitionInstance.stop()
+            } catch (e) {
+              // Already stopped
+            }
             
             // Check if user said "i'm tarun" or variations
             if (
               speechResult.includes("i'm tarun") || 
               speechResult.includes("im tarun") ||
-              speechResult.includes("i am tarun")
+              speechResult.includes("i am tarun") ||
+              speechResult.includes("tarun")  // More lenient for mobile
             ) {
               setStatus('success')
               setTimeout(() => {
@@ -56,10 +79,10 @@ export default function LoginPage() {
               setTimeout(() => {
                 setStatus('idle')
                 setTranscript('')
-              }, 2000)
+              }, 3000)  // Longer delay on error
             }
           } else {
-            // Show interim result
+            // Show interim result (desktop only)
             setTranscript(speechResult + '...')
           }
         }
@@ -72,6 +95,21 @@ export default function LoginPage() {
 
         recognitionInstance.onend = () => {
           setIsListening(false)
+          
+          // On mobile, if we're still in listening state, restart to capture more
+          const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
+          if (isMobile && status === 'listening' && !transcript) {
+            // Auto-restart if no transcript captured yet
+            setTimeout(() => {
+              if (status === 'listening') {
+                try {
+                  recognitionInstance.start()
+                } catch (e) {
+                  // Already started or error
+                }
+              }
+            }, 100)
+          }
         }
 
         setRecognition(recognitionInstance)
@@ -151,7 +189,7 @@ export default function LoginPage() {
                 <Volume2 className="h-5 w-5" />
                 <span className="font-medium">Speak Your Identity</span>
               </div>
-              <p className="text-sm text-gray-500">Click the microphone and speak clearly</p>
+              <p className="text-sm text-gray-500">Tap the microphone and speak your full phrase clearly</p>
             </div>
 
             {/* Microphone Button */}
