@@ -31,6 +31,9 @@ interface Topic {
   comment?: string
   youtube_links?: string[]
   attachments?: Attachment[]
+  revision_target?: number
+  revision_current?: number
+  confidence_percentage?: number
 }
 
 interface Subject {
@@ -292,6 +295,42 @@ export default function AllTopicsPage() {
                                 </span>
                               </div>
                               <Progress value={topic.progress_percentage} className="h-2" />
+                            </div>
+
+                            {/* Revision Counter & Confidence */}
+                            <div className="grid grid-cols-2 gap-2 mb-3">
+                              {/* Revision Counter */}
+                              <div className="bg-blue-50 rounded-lg p-2">
+                                <div className="flex items-center justify-between mb-1">
+                                  <span className="text-xs font-medium text-blue-700">Revisions</span>
+                                  <span className="text-xs font-semibold text-blue-900">
+                                    {topic.revision_current || 0}/{topic.revision_target || 0}
+                                  </span>
+                                </div>
+                                <Progress 
+                                  value={topic.revision_target ? ((topic.revision_current || 0) / topic.revision_target) * 100 : 0} 
+                                  className="h-1.5 bg-blue-100"
+                                />
+                                {topic.revision_target && topic.revision_current !== undefined && topic.revision_current < topic.revision_target && (
+                                  <p className="text-xs text-blue-600 mt-1">
+                                    {topic.revision_target - topic.revision_current} left
+                                  </p>
+                                )}
+                              </div>
+
+                              {/* Confidence Percentage */}
+                              <div className="bg-orange-50 rounded-lg p-2">
+                                <div className="flex items-center justify-between mb-1">
+                                  <span className="text-xs font-medium text-orange-700">Confidence</span>
+                                  <span className="text-xs font-semibold text-orange-900">
+                                    {topic.confidence_percentage || 0}%
+                                  </span>
+                                </div>
+                                <Progress 
+                                  value={topic.confidence_percentage || 0} 
+                                  className="h-1.5 bg-orange-100"
+                                />
+                              </div>
                             </div>
 
                             {topic.comment && (

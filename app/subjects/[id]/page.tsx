@@ -32,6 +32,9 @@ interface Topic {
   comment?: string
   youtube_links?: string[]
   attachments?: Attachment[]
+  revision_target?: number
+  revision_current?: number
+  confidence_percentage?: number
 }
 
 interface Subject {
@@ -59,6 +62,9 @@ export default function TopicsPage() {
     comment: '',
     youtube_links: [] as string[],
     attachments: [] as Attachment[],
+    revision_target: 0,
+    revision_current: 0,
+    confidence_percentage: 0,
   })
   
   const [newYoutubeLink, setNewYoutubeLink] = useState('')
@@ -104,6 +110,9 @@ export default function TopicsPage() {
       comment: '',
       youtube_links: [],
       attachments: [],
+      revision_target: 0,
+      revision_current: 0,
+      confidence_percentage: 0,
     })
     setNewYoutubeLink('')
   }
@@ -125,6 +134,9 @@ export default function TopicsPage() {
           comment: formData.comment || null,
           youtube_links: formData.youtube_links,
           attachments: formData.attachments,
+          revision_target: formData.revision_target,
+          revision_current: formData.revision_current,
+          confidence_percentage: formData.confidence_percentage,
         }),
       })
 
@@ -154,6 +166,9 @@ export default function TopicsPage() {
           comment: formData.comment || null,
           youtube_links: formData.youtube_links,
           attachments: formData.attachments,
+          revision_target: formData.revision_target,
+          revision_current: formData.revision_current,
+          confidence_percentage: formData.confidence_percentage,
         }),
       })
 
@@ -214,6 +229,9 @@ export default function TopicsPage() {
       comment: topic.comment || '',
       youtube_links: topic.youtube_links || [],
       attachments: topic.attachments || [],
+      revision_target: topic.revision_target || 0,
+      revision_current: topic.revision_current || 0,
+      confidence_percentage: topic.confidence_percentage || 0,
     })
     setDialogOpen(true)
   }
@@ -346,6 +364,15 @@ export default function TopicsPage() {
                             <span className="font-medium">Date:</span> {new Date(topic.date_studied).toLocaleDateString()}
                           </div>
                         )}
+                        <div>
+                          <span className="font-medium">Revisions:</span> {topic.revision_current || 0}/{topic.revision_target || 0}
+                          {topic.revision_target && topic.revision_current !== undefined && topic.revision_current < topic.revision_target && (
+                            <span className="text-blue-600 ml-1">({topic.revision_target - topic.revision_current} left)</span>
+                          )}
+                        </div>
+                        <div>
+                          <span className="font-medium">Confidence:</span> {topic.confidence_percentage || 0}%
+                        </div>
                         {topic.comment && (
                           <div className="col-span-2 md:col-span-4">
                             <span className="font-medium">Notes:</span> {topic.comment}
@@ -428,6 +455,47 @@ export default function TopicsPage() {
                   onValueChange={(value) => setFormData({ ...formData, progress_percentage: value[0] })}
                   className="mt-2"
                 />
+              </div>
+
+              {/* Revision Counter Section */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="revision-target">Revision Target</Label>
+                  <Input
+                    id="revision-target"
+                    type="number"
+                    min="0"
+                    placeholder="e.g., 5"
+                    value={formData.revision_target}
+                    onChange={(e) => setFormData({ ...formData, revision_target: parseInt(e.target.value) || 0 })}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="revision-current">Current Revisions</Label>
+                  <Input
+                    id="revision-current"
+                    type="number"
+                    min="0"
+                    placeholder="e.g., 2"
+                    value={formData.revision_current}
+                    onChange={(e) => setFormData({ ...formData, revision_current: parseInt(e.target.value) || 0 })}
+                  />
+                </div>
+              </div>
+
+              {/* Confidence Percentage Section */}
+              <div>
+                <Label htmlFor="confidence">Confidence: {formData.confidence_percentage}%</Label>
+                <Slider
+                  id="confidence"
+                  min={0}
+                  max={100}
+                  step={5}
+                  value={[formData.confidence_percentage]}
+                  onValueChange={(value) => setFormData({ ...formData, confidence_percentage: value[0] })}
+                  className="mt-2"
+                />
+                <p className="text-xs text-gray-500 mt-1">How confident are you in this topic?</p>
               </div>
 
               <div>

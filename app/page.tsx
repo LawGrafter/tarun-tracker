@@ -5,7 +5,7 @@ import Navbar from '@/components/Navbar'
 import LoadingSpinner from '@/components/LoadingSpinner'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
-import { BookOpen, Target, TrendingUp, Calendar, Plus, ArrowRight, Youtube, Paperclip, FileText } from 'lucide-react'
+import { BookOpen, Target, TrendingUp, Calendar, Plus, ArrowRight, Youtube, Paperclip, FileText, AlertTriangle, Award, TrendingDown } from 'lucide-react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
@@ -43,6 +43,9 @@ interface Topic {
   date_studied?: string
   youtube_links?: string[]
   attachments?: Attachment[]
+  confidence_percentage?: number
+  revision_current?: number
+  revision_target?: number
 }
 
 export default function Dashboard() {
@@ -54,6 +57,8 @@ export default function Dashboard() {
   })
   const [subjects, setSubjects] = useState<Subject[]>([])
   const [recentTopics, setRecentTopics] = useState<Topic[]>([])
+  const [weakTopics, setWeakTopics] = useState<Topic[]>([])
+  const [strongTopics, setStrongTopics] = useState<Topic[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -91,6 +96,28 @@ export default function Dashboard() {
         })
         .slice(0, 5)
       setRecentTopics(sortedTopics)
+
+      // Get weak topics (lowest confidence, only topics with confidence set)
+      const topicsWithConfidence = topicsData.filter((t: Topic) => 
+        t.confidence_percentage !== undefined && t.confidence_percentage !== null
+      )
+      const sortedWeakTopics = [...topicsWithConfidence]
+        .sort((a: Topic, b: Topic) => 
+          (a.confidence_percentage || 0) - (b.confidence_percentage || 0)
+        )
+        .slice(0, 5)
+      setWeakTopics(sortedWeakTopics)
+
+      // Get strong topics (highest confidence, only 50% or above)
+      const topicsWithMeaningfulConfidence = topicsWithConfidence.filter((t: Topic) => 
+        (t.confidence_percentage || 0) >= 50
+      )
+      const sortedStrongTopics = [...topicsWithMeaningfulConfidence]
+        .sort((a: Topic, b: Topic) => 
+          (b.confidence_percentage || 0) - (a.confidence_percentage || 0)
+        )
+        .slice(0, 5)
+      setStrongTopics(sortedStrongTopics)
     } catch (error) {
       console.error('Failed to fetch dashboard data:', error)
     } finally {
@@ -341,6 +368,183 @@ export default function Dashboard() {
                     )
                   })}
                 </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+        )}
+
+        {/* Confidence Analysis */}
+        {!loading && (weakTopics.length > 0 || strongTopics.length > 0) && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.65 }}
+            className="mb-8"
+          >
+            <Card className="card-hover bg-gradient-to-br from-orange-50 via-white to-green-50 border-2">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="text-xl font-bold text-gray-900 flex items-center gap-2">
+                      <TrendingUp className="h-6 w-6 text-orange-600" />
+                      Confidence Analysis
+                    </CardTitle>
+                    <p className="text-sm text-gray-500 mt-1">Focus areas and strengths based on your confidence levels</p>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  {/* Weak Topics - Need Focus */}
+                  {weakTopics.length > 0 && (
+                    <div className="bg-gradient-to-br from-red-50 to-orange-50 rounded-xl p-4 border-2 border-red-200">
+                      <div className="flex items-center gap-2 mb-4">
+                        <div className="p-2 bg-red-100 rounded-lg">
+                          <AlertTriangle className="h-5 w-5 text-red-600" />
+                        </div>
+                        <div>
+                          <h3 className="font-bold text-red-900">Need More Focus</h3>
+                          <p className="text-xs text-red-600">Topics with lowest confidence</p>
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        {weakTopics.map((topic, index) => {
+                          const subject = subjects.find(s => s.id === topic.subject_id)
+                          return (
+                            <motion.div
+                              key={topic.id}
+                              initial={{ opacity: 0, x: -20 }}
+                              animate={{ opacity: 1, x: 0 }}
+                              transition={{ duration: 0.3, delay: index * 0.1 }}
+                              className="bg-white rounded-lg p-3 border border-red-200 hover:border-red-400 hover:shadow-md transition-all"
+                            >
+                              <div className="flex items-center justify-between gap-3">
+                                <div className="flex-1 min-w-0">
+                                  <h4 className="font-semibold text-gray-900 text-sm truncate">{topic.topic_name}</h4>
+                                  <p className="text-xs text-gray-500 truncate">{subject?.name || 'Unknown Subject'}</p>
+                                </div>
+                                <div className="flex items-center gap-2 flex-shrink-0">
+                                  <div className="text-right">
+                                    <div className="flex items-center gap-1">
+                                      <TrendingDown className="h-3 w-3 text-red-600" />
+                                      <span className="text-sm font-bold text-red-600">
+                                        {topic.confidence_percentage}%
+                                      </span>
+                                    </div>
+                                    <p className="text-xs text-gray-500">confidence</p>
+                                  </div>
+                                  <Link href={`/subjects/${topic.subject_id}`}>
+                                    <Button size="sm" variant="ghost" className="h-8 w-8 p-0 hover:bg-red-100">
+                                      <ArrowRight className="h-4 w-4 text-red-600" />
+                                    </Button>
+                                  </Link>
+                                </div>
+                              </div>
+                              {/* Mini progress bar */}
+                              <div className="mt-2 flex items-center gap-2">
+                                <div className="flex-1 h-1.5 bg-red-100 rounded-full overflow-hidden">
+                                  <div 
+                                    className="h-full bg-red-500"
+                                    style={{ width: `${topic.confidence_percentage || 0}%` }}
+                                  />
+                                </div>
+                                <span className="text-xs text-gray-500">{topic.progress_percentage}% done</span>
+                              </div>
+                            </motion.div>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Strong Topics - Keep It Up */}
+                  {strongTopics.length > 0 && (
+                    <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl p-4 border-2 border-green-200">
+                      <div className="flex items-center gap-2 mb-4">
+                        <div className="p-2 bg-green-100 rounded-lg">
+                          <Award className="h-5 w-5 text-green-600" />
+                        </div>
+                        <div>
+                          <h3 className="font-bold text-green-900">Your Strengths</h3>
+                          <p className="text-xs text-green-600">Topics with highest confidence</p>
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        {strongTopics.map((topic, index) => {
+                          const subject = subjects.find(s => s.id === topic.subject_id)
+                          return (
+                            <motion.div
+                              key={topic.id}
+                              initial={{ opacity: 0, x: 20 }}
+                              animate={{ opacity: 1, x: 0 }}
+                              transition={{ duration: 0.3, delay: index * 0.1 }}
+                              className="bg-white rounded-lg p-3 border border-green-200 hover:border-green-400 hover:shadow-md transition-all"
+                            >
+                              <div className="flex items-center justify-between gap-3">
+                                <div className="flex-1 min-w-0">
+                                  <h4 className="font-semibold text-gray-900 text-sm truncate">{topic.topic_name}</h4>
+                                  <p className="text-xs text-gray-500 truncate">{subject?.name || 'Unknown Subject'}</p>
+                                </div>
+                                <div className="flex items-center gap-2 flex-shrink-0">
+                                  <div className="text-right">
+                                    <div className="flex items-center gap-1">
+                                      <TrendingUp className="h-3 w-3 text-green-600" />
+                                      <span className="text-sm font-bold text-green-600">
+                                        {topic.confidence_percentage}%
+                                      </span>
+                                    </div>
+                                    <p className="text-xs text-gray-500">confidence</p>
+                                  </div>
+                                  <Link href={`/subjects/${topic.subject_id}`}>
+                                    <Button size="sm" variant="ghost" className="h-8 w-8 p-0 hover:bg-green-100">
+                                      <ArrowRight className="h-4 w-4 text-green-600" />
+                                    </Button>
+                                  </Link>
+                                </div>
+                              </div>
+                              {/* Mini progress bar */}
+                              <div className="mt-2 flex items-center gap-2">
+                                <div className="flex-1 h-1.5 bg-green-100 rounded-full overflow-hidden">
+                                  <div 
+                                    className="h-full bg-green-500"
+                                    style={{ width: `${topic.confidence_percentage || 0}%` }}
+                                  />
+                                </div>
+                                <span className="text-xs text-gray-500">{topic.progress_percentage}% done</span>
+                              </div>
+                            </motion.div>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Summary Stats */}
+                {weakTopics.length > 0 && strongTopics.length > 0 && (
+                  <div className="mt-6 pt-4 border-t border-gray-200">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      <div className="bg-orange-50 rounded-lg p-3 text-center">
+                        <p className="text-xs text-orange-600 font-medium mb-1">Avg. Weak Confidence</p>
+                        <p className="text-2xl font-bold text-orange-700">
+                          {Math.round(weakTopics.reduce((sum, t) => sum + (t.confidence_percentage || 0), 0) / weakTopics.length)}%
+                        </p>
+                      </div>
+                      <div className="bg-yellow-50 rounded-lg p-3 text-center">
+                        <p className="text-xs text-yellow-600 font-medium mb-1">Topics Tracked</p>
+                        <p className="text-2xl font-bold text-yellow-700">
+                          {weakTopics.length + strongTopics.length}
+                        </p>
+                      </div>
+                      <div className="bg-green-50 rounded-lg p-3 text-center">
+                        <p className="text-xs text-green-600 font-medium mb-1">Avg. Strong Confidence</p>
+                        <p className="text-2xl font-bold text-green-700">
+                          {Math.round(strongTopics.reduce((sum, t) => sum + (t.confidence_percentage || 0), 0) / strongTopics.length)}%
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </motion.div>

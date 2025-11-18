@@ -41,6 +41,9 @@ export async function POST(req: NextRequest) {
       comment,
       youtube_links = [],
       attachments = [],
+      revision_target = 0,
+      revision_current = 0,
+      confidence_percentage = 0,
     } = body
 
     if (!subject_id || !topic_name) {
@@ -63,6 +66,9 @@ export async function POST(req: NextRequest) {
           comment,
           youtube_links,
           attachments,
+          revision_target,
+          revision_current,
+          confidence_percentage,
         },
       ])
       .select()
